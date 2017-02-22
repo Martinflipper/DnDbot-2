@@ -40,28 +40,7 @@ class Program
                     await Task.Delay(3000);
                 }
             }
-            string checker = " ";
-            while (true)
-            {
-                while (checker != turnOf)
-                {
-                    
-                    try
-                    {
-                        _client.SetGame(new Game(turnOf));
 
-                    }
-                    
-                    catch
-                    {
-                        Console.WriteLine("try again");
-                        break;
-                    }
-                    Console.WriteLine("succeed");
-                    checker = turnOf;
-                }
-
-            }
         });
 
 
