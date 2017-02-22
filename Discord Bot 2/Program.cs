@@ -4,6 +4,9 @@
  * Edited by: Chiel Ton
  */
 
+ /*
+  * Packages
+  */
 using System;
 using System.IO;
 using System.Xml;
@@ -13,14 +16,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using DnDbot;
 
-
+/*
+ * Main code
+ */
 class Program
 {
+    /*
+     * Main function replacement
+     */
     static void Main(string[] args) => new Program().Start();
 
-    //Variables and such
+    /*
+     * Variables and such
+     */
     private DiscordClient _client;
     static string charSheetlocation = string.Format("{0}CharSheet.xml", Path.GetTempPath());
+
+    /*
+     * Starts the program
+     */
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
@@ -48,8 +62,10 @@ class Program
         });
     }
 
-    //Message Handlers
-    static void bot_MessageReceived(object sender, Discord.MessageEventArgs e) //Commands
+    /*
+     * message received from a bot
+     */
+    static void bot_MessageReceived(object sender, Discord.MessageEventArgs e)
     {
         string userRole;
         try
@@ -71,7 +87,9 @@ class Program
         }
     }
 
-    //Command Handlers
+    /*
+     * command from dm
+     */
     static void dmCommand(object sender, Discord.MessageEventArgs e)
     {
         string[] command = commandPart(e.Message.RawText);
@@ -124,6 +142,10 @@ class Program
         else pcCommand(sender, e);
 
     }
+
+    /*
+     * command from pc
+     */
     static void pcCommand(object sender, Discord.MessageEventArgs e)
     {
         string[] command = commandPart(e.Message.RawText);
@@ -169,7 +191,7 @@ class Program
                     i[1] = command[1].IndexOf("+", i[0]);
                     i[2] = command[1].IndexOf("-", i[0]);
 
-                    i[1] = GetSmallestNonNegative(i[1], i[2]);
+                    i[1] = getSmallestNonNegative(i[1], i[2]);
 
                     if (i[0] == 0)
                     {
@@ -182,7 +204,7 @@ class Program
                     i[0] = command[1].IndexOf("+", i[3]);
                     i[2] = command[1].IndexOf("-", i[3]);
 
-                    i[0] = GetSmallestNonNegative(i[0], i[2]);
+                    i[0] = getSmallestNonNegative(i[0], i[2]);
 
                     i[3] = i[0] + 1;
 
@@ -326,13 +348,12 @@ class Program
 
             e.Message.Delete(); //deleting command-message
             e.Channel.SendMessage(e.User.Mention + output);
-
-
-
         }
-
-        return;
     }
+
+    /*
+     * split the command into command sections
+     */
     static string[] commandPart(string command)
     {
         char[] delimiterchars = { ' ' };
@@ -340,7 +361,9 @@ class Program
         return commandPart;
     }
 
-    //xml Handlers
+    /*
+     * XML-handler: Get
+     */
     static string xmlGet(string adress)
     {
         //laden XML-sheet
@@ -358,34 +381,49 @@ class Program
         }
         return value;
     }
+
+    /*
+     * XML-handler: Set
+     */
     static void xmlSet(string value, string adress)
     {
         XmlDocument charSheet = new XmlDocument();
         charSheet.Load(@charSheetlocation);
         charSheet.SelectSingleNode(adress).InnerText = value;
         charSheet.Save(@charSheetlocation);
-        return;
     }
 
-    //Send Messages
+    /*
+     * sends an error message
+     */
     static void errorMessage(int errorCode, object sender, Discord.MessageEventArgs e)
     {
         string message = string.Format("Command Failure, error code {0}", errorCode);
         e.User.SendMessage(message);
     }
+
+    /*
+     * sends a personal message
+     */
     static void personalMessage(string message, object sender, Discord.MessageEventArgs e)
     {
 
         e.Message.Delete();
         e.User.SendMessage(message);
     }
+
+    /*
+     * sends a channel message
+     */
     static void channelMessage(string message, object sender, Discord.MessageEventArgs e)
     {
         e.Message.Delete();
         e.Channel.SendMessage(message);
     }
 
-    //Health Calculations
+    /*
+     * sets the HP value
+     */
     static void simpleHP(object sender, Discord.MessageEventArgs e)
     {
         int? cHp = charHp(e.User.Nickname);
@@ -400,6 +438,10 @@ class Program
             personalMessage(message, sender, e);
         }
     }
+
+    /*
+     * changes the HP value (DM only)
+     */
     static void complexHP(string[] command,object sender, Discord.MessageEventArgs e)
     {
         string playerName = command[1];
@@ -418,6 +460,11 @@ class Program
 
         editCharHp(playerName, hpModifier, sender, e);
     }
+
+    /*
+     * called by compPlexHP and DM command handler
+     * does checks sets new HP and edits everything in XML
+     */
     static void editCharHp(string charName, int hpModifier, object sender, Discord.MessageEventArgs e)
     {
         //get current and max HP
@@ -449,6 +496,10 @@ class Program
         string message = string.Format("De hp van {0} is nu {1}. *({2})*", charName, cNewHp, hpModifier);
         channelMessage(message, sender, e);
     }
+
+    /*
+     * Displays charHp
+     */
     static int? charHp(string charName)
     {
         int? charHp;
@@ -465,6 +516,10 @@ class Program
 
         return charHp;
     }
+
+    /*
+     * Displays charMax Hp
+     */
     static int? charMaxHp(string charName)
     {
         int? charHp;
@@ -481,7 +536,9 @@ class Program
         return charHp;
     }
 
-    //Ability Calculations
+    /*
+     * return ability value
+     */
     static int? charAbil(string charName, string charValueName)
     {
         int? charAbil;
@@ -498,8 +555,10 @@ class Program
         return charAbil;
     }
 
-
-    static int? charSkills(string charName, string charValueName) //collects skill score from xml
+    /*
+     * collects skill score from xml
+     */
+    static int? charSkills(string charName, string charValueName)
     {
         //Laden van de XML-sheets
         XmlDocument charSheet = new XmlDocument();
@@ -526,14 +585,21 @@ class Program
 
         Console.WriteLine("charSkills has been succesfully executed with a {0} score of {1}", charValueName, charValue);
 
-        //Return de value
+        //Return the value
         return charValue;
     }
 
+    /*
+     * changes shortcuts to full names
+     */
     static string nameHandler(string namePart) //verandert afkorting naar volledige abilitynaam
     {
-        string[] abilitiesList = { "Str", "Con", "Dex", "Int", "Wis", "Cha", "Acr", "Arc", "Ath", "Blu", "Dip", "Dun", "End", "Hea", "His", "Ins", "Itd", "Nat", "Per", "Rel", "Ste", "Stw", "Thi" };
-        string[] abilitiesNames = { "strength", "constitution", "dexterity", "inteligence", "wisdom", "charisma", "acrobatics", "arcana", "athletics", "bluff", "diplomacy", "dungeoneering", "endurance", "heal", "history", "insight", "intimidate", "nature", "perception", "religion", "stealth", "streetwise", "thievery" };
+        string[] abilitiesList = { "Str", "Con", "Dex", "Int", "Wis", "Cha", "Acr", "Arc", "Ath",
+            "Blu", "Dip", "Dun", "End", "Hea", "His", "Ins", "Itd", "Nat", "Per", "Rel", "Ste", "Stw", "Thi" };
+        string[] abilitiesNames = { "strength", "constitution", "dexterity", "inteligence", "wisdom",
+            "charisma", "acrobatics", "arcana", "athletics", "bluff", "diplomacy", "dungeoneering",
+            "endurance", "heal", "history", "insight", "intimidate", "nature", "perception", "religion",
+            "stealth", "streetwise", "thievery" };
 
         int i = 0; //indexer
 
@@ -548,7 +614,6 @@ class Program
                 }
             }
         }
-
         else if (namePart.Length > 3)
         {
             while (abilitiesNames[i].Equals(namePart, StringComparison.OrdinalIgnoreCase) == false)
@@ -561,13 +626,15 @@ class Program
             }
         }
 
-
         string fullname = abilitiesNames[i];
         return fullname;
-
     }
 
-    static int[] typeChecker(string commandPart, string userName) //returns int array {value to be added, typecode}
+    /*
+     * returns int array {value to be added, typecode}
+     * Checks command parts to determine function
+     */
+    static int[] typeChecker(string commandPart, string userName)
     {
         int functionValue;
         int[] typeChecker = new int[2];
@@ -608,7 +675,10 @@ class Program
         }
     }
 
-    static int GetSmallestNonNegative(int a, int b)
+    /*
+     * returns the smalles nog negative of two numbers
+     */
+    static int getSmallestNonNegative(int a, int b)
     {
         if (a >= 0 && b >= 0)
             return Math.Min(a, b);
