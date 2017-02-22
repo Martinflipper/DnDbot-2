@@ -1,4 +1,10 @@
-﻿using System;
+﻿/*
+ * Filename: Program.cs
+ * Author: Marin Visscher
+ * Edited by: Chiel Ton
+ */
+
+using System;
 using System.IO;
 using System.Xml;
 using System.Linq;
