@@ -15,6 +15,8 @@ class Program
     //Variables and such
     private DiscordClient _client;
     static string charSheetlocation = string.Format("{0}CharSheet.xml", Path.GetTempPath());
+
+
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
@@ -30,7 +32,7 @@ class Program
             {
                 try
                 {
-                    await _client.Connect("Mjc5MjkwNjgzMjY4MDA1ODg4.C4DXPg.31L5sU0R9yxYRWjDU0UQ8vE_1zQ", TokenType.Bot);
+                    await _client.Connect("Mjg0MDEzODI0OTI1ODkyNjA5.C49b_w.ZCP3wwhWAvjcHi2onTpPkMD9jZk", TokenType.Bot);
                     break;
                 }
                 catch
