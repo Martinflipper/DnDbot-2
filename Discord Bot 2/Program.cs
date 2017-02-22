@@ -15,8 +15,6 @@ class Program
     //Variables and such
     private DiscordClient _client;
     static string charSheetlocation = string.Format("{0}CharSheet.xml", Path.GetTempPath());
-    static string turnOf = "0";
-
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
@@ -42,17 +40,11 @@ class Program
             }
 
         });
-
-
-
-
     }
 
+    //Message Handlers
     static void bot_MessageReceived(object sender, Discord.MessageEventArgs e) //Commands
     {
-
-
-        char[] delimiterchars = { ' ' };
         string userRole;
         try
         {
@@ -63,130 +55,92 @@ class Program
             userRole = "nothing";
         }
 
-        if (e.Message.RawText.StartsWith("/ability")) //Ability Commands -personal
+        if (userRole == "DM")
         {
-            string[] command = e.Message.RawText.Split(delimiterchars);
-            string charValueName = command[1];
-            string charName;
+            dmCommand(sender, e);
+        }
+        else
+        {
+            pcCommand(sender, e);
+        }
+    }
 
-            if (command.Length == 2) //uses nickname as charname
+    //Command Handlers
+    static void dmCommand(object sender, Discord.MessageEventArgs e)
+    {
+        string[] command = commandPart(e.Message.RawText);
+        if (e.Message.RawText.StartsWith("/ability") && command.Length == 3)            // DM ability-lookup (/ability playername)
+        {
+            int? abilScore = charAbil(command[2], command[1]);
+            if (abilScore == null)
             {
-                charName = e.User.Nickname;
-            }
-            else if (command.Length == 3 && userRole == "DM") //uses given charname as charname
-            {
-                charName = command[2];
-            }
-            else
-            {
-                string errorMessage = "U FUCKED UP, command error"; //error in command syntax
-                e.User.SendMessage(e.User.Mention + errorMessage);
+                errorMessage(4, sender, e);
                 return;
             }
-
-            int? charValue = charAbilities(charName, charValueName); //get abilityscore
-            if (charValue == null)
-            {
-                string errorMessage = "U FUCKED UP, parse error"; //error parsing the abilityname
-                e.User.SendMessage(e.User.Mention + errorMessage);
-                return;
-            }
-
+            string message = string.Format("The {0} score of {1} = {2}", command[1], command[2], abilScore);
+            personalMessage(message, sender, e);
+            return;
+        }
+        else if (e.Message.RawText.StartsWith("/hp") && command.Length == 3)            // DM HP-edit (/hp playername {+/-}value)
+        {
+            complexHP(command, sender, e);
+        }
+        else if (e.Message.RawText.StartsWith("/download"))                             //xml download
+        {
             e.Message.Delete(); //deleting command-message
-            string message = String.Format("Your {0} score is {1}", charValueName, charValue);
-            e.User.SendMessage(message); //sending user personal message with data
+            e.User.SendFile(charSheetlocation);
+
         }
-        else if (e.Message.RawText.StartsWith("/hp")) //HP commands -personal
+        else if (e.Message.RawText.StartsWith("/update"))                               //xml updater
         {
-            string[] command = e.Message.RawText.Split(delimiterchars);
-            if (command.Length == 1) //the simple /hp command
-            {
-                int?[] healthPoints = new int?[2];
-                healthPoints = charHp(e.User.Nickname);
-                if (healthPoints[0] == null)
-                {
-                    string errorMessage = "U FUCKED UP, Nickname-parse error";
-                    e.Message.Delete();
-                    e.User.SendMessage(e.User.Mention + errorMessage);
-                    return;
-                }
-                else
-                {
-                    string hpSender = string.Format("Your current hp is {0}/{1}", healthPoints[0], healthPoints[1]);
-                    e.Message.Delete();
-                    e.User.SendMessage(hpSender);
-                }
-            }
-            else if (command.Length == 4 && userRole == "DM") //add or remove hp from player
-            {
-                string playerName = command[1];
-                string modifier = command[2];
-                string hpScore = command[3];
-                int hpModifier;
+            e.Message.Delete(); //deleting command-message
+            e.User.SendMessage("Old XML file:");
+            e.User.SendFile(charSheetlocation);
 
-                string succesmessage;
+            string xmlUrl = e.Message.Attachments[0].Url;
+            XmlDocument charSheet = new XmlDocument();
+            Console.WriteLine(xmlUrl);
 
-                if (modifier == "add")
-                {
-                    try
-                    {
-                        hpModifier = Int32.Parse(hpScore);
-                        succesmessage = string.Format("{0} healt voor {1}", playerName, hpScore);
-                    }
-                    catch
-                    {
-                        string errorMessage = "U FUCKED UP, parse error"; //error parsing the abilityname
-                        e.User.SendMessage(e.User.Mention + errorMessage);
-                        return;
-                    }
-
-                }
-                else if (modifier == "del" || modifier == "delete")
-                {
-                    hpScore = string.Format("-{0}", hpScore);
-                    try
-                    {
-                        hpModifier = Int32.Parse(hpScore);
-                        succesmessage = string.Format("{0} neemt {1} damage", playerName, hpScore);
-                    }
-                    catch
-                    {
-                        string errorMessage = "U FUCKED UP, parse error"; //error parsing the abilityname
-                        e.User.SendMessage(e.User.Mention + errorMessage);
-                        return;
-                    }
-                }
-
-                else
-                {
-                    string errorMessage = "U FUCKED UP, command error"; //error parsing the command
-                    e.User.SendMessage(e.User.Mention + errorMessage);
-                    return;
-                }
-
-                bool succes;
-
-                succes = editCharHp(playerName, hpModifier);
-
-                if (succes == true)
-                {
-                    e.Channel.SendMessage(e.User.Mention + succesmessage);
-                    return;
-                }
-
-                else
-                {
-                    string errorMessage = "U FUCKED UP, editHp error"; //error parsing the abilityname
-                    e.User.SendMessage(errorMessage);
-                    return;
-                }
-
-            }
+            charSheet.Load(xmlUrl);
+            charSheet.Save(charSheetlocation);
+            e.User.SendMessage("XML file updated");
         }
-        else if (e.Message.RawText.StartsWith("/r")) //Roll Dem Dice 2.0
+        else if (e.Message.RawText.Contains("@") && e.Channel.Name == "general")
+        {
+            char[] delChars = { '!', '>' };
+            string[] split1 = e.Message.RawText.Split('@');
+            string[] split2 = split1[1].Split(' ');
+            ulong toMention = ulong.Parse(split2[0].Trim(delChars));
+            e.Server.GetUser(toMention).SendMessage("YOU HAVE BEEN SUMMONED BY THE DM");
+
+        }
+
+        else pcCommand(sender, e);
+
+    }
+    static void pcCommand(object sender, Discord.MessageEventArgs e)
+    {
+        string[] command = commandPart(e.Message.RawText);
+        if (e.Message.RawText.StartsWith("/ability"))
+        {
+            int? abilScore = charAbil(e.User.Nickname, command[1]);
+            if (abilScore == null)
+            {
+                errorMessage(4, sender, e);
+                return;
+            }
+            string message = string.Format("The {0} score of {1} = {2}", command[1], command[2], abilScore);
+            personalMessage(message, sender, e);
+            return;
+        }
+        else if (e.Message.RawText.StartsWith("/hp"))
+        {
+            simpleHP(sender, e);
+            return;
+        }
+        else if (e.Message.RawText.StartsWith("/r"))                                    //Roll Dem Dice 2.0
         {
             Random rnd = new Random();
-            string[] command = e.Message.RawText.Split(delimiterchars);
             string[] calculator = new string[30];
             string userName = e.User.Nickname;
             string skillName = " ";
@@ -370,163 +324,174 @@ class Program
 
 
         }
-        else if (userRole == "DM") //Admin commands
-        {
 
-            if (e.Message.RawText.StartsWith("/download")) //xml download
-            {
-                e.Message.Delete(); //deleting command-message
-                e.User.SendFile(charSheetlocation);
-
-            }
-            else if (e.Message.RawText.StartsWith("/update")) //xml updater
-            {
-                e.Message.Delete(); //deleting command-message
-                e.User.SendMessage("Old XML file:");
-                e.User.SendFile(charSheetlocation);
-
-                string xmlUrl = e.Message.Attachments[0].Url;
-                XmlDocument charSheet = new XmlDocument();
-                Console.WriteLine(xmlUrl);
-
-                charSheet.Load(xmlUrl);
-                charSheet.Save(charSheetlocation);
-                e.User.SendMessage("XML file updated");
-            }
-            else if (e.Message.RawText.Contains("@") && e.Channel.Name == "general")
-            {
-                Console.WriteLine("Mentioner");
-                char[] delChars2 = { '@' };
-                char[] delChars = { '!', '>' };
-                string[] split1 = e.Message.RawText.Split(delChars2);
-                string[] split2 = split1[1].Split(delimiterchars);
-                split2[0] = split2[0].Trim(delChars);
-                Console.WriteLine("Mentioning {0}", split2[0]);
-                ulong toMention = ulong.Parse(split2[0]);
-                e.Server.GetUser(toMention).SendMessage("YOU HAVE BEEN SUMMONED BY THE DM");
-                turnOf = e.Server.GetUser(toMention).Nickname;
-
-                
-            }
-        }
-
+        return;
+    }
+    static string[] commandPart(string command)
+    {
+        char[] delimiterchars = { ' ' };
+        string[] commandPart = command.Split(delimiterchars);
+        return commandPart;
     }
 
-    static bool editCharHp(string charName, int hpModifier)
+    //xml Handlers
+    static string xmlGet(string adress)
     {
-        bool succes;
-        int?[] currentHp = new int?[2];
-        int newHpValue;
-        string newHpValueString;
-
-        //get current and max HP
-        currentHp = charHp(charName);
-        if (currentHp[0] == null)
+        //laden XML-sheet
+        XmlDocument charSheet = new XmlDocument();
+        charSheet.Load(@charSheetlocation);
+        string value;
+        //verkrijgen info
+        try
         {
-            succes = false;
-            return succes;
+            value = charSheet.DocumentElement.SelectSingleNode(adress).InnerText;
         }
-
-        //change it, and convert to string
-        if (currentHp[0] + hpModifier > currentHp[1])
+        catch
         {
-            newHpValue = currentHp[1] ?? default(int);
+            value = "none";
+        }
+        return value;
+    }
+    static void xmlSet(string value, string adress)
+    {
+        XmlDocument charSheet = new XmlDocument();
+        charSheet.Load(@charSheetlocation);
+        charSheet.SelectSingleNode(adress).InnerText = value;
+        charSheet.Save(@charSheetlocation);
+        return;
+    }
+
+    //Send Messages
+    static void errorMessage(int errorCode, object sender, Discord.MessageEventArgs e)
+    {
+        string message = string.Format("Command Failure, error code {0}", errorCode);
+        e.User.SendMessage(message);
+    }
+    static void personalMessage(string message, object sender, Discord.MessageEventArgs e)
+    {
+
+        e.Message.Delete();
+        e.User.SendMessage(message);
+    }
+    static void channelMessage(string message, object sender, Discord.MessageEventArgs e)
+    {
+        e.Message.Delete();
+        e.Channel.SendMessage(message);
+    }
+
+    //Health Calculations
+    static void simpleHP(object sender, Discord.MessageEventArgs e)
+    {
+        int? cHp = charHp(e.User.Nickname);
+        int? cMaxHp = charMaxHp(e.User.Nickname);
+        if (cHp == null)
+        {
+            errorMessage(1, sender, e);
         }
         else
         {
-            newHpValue = hpModifier + currentHp[0] ?? default(int);
+            string message = string.Format("Your current hp is {0}/{1}", cHp, cMaxHp);
+            personalMessage(message, sender, e);
         }
-
-        newHpValueString = newHpValue.ToString();
-
-        //Laden van de XML-sheets
-        XmlDocument charSheet = new XmlDocument();
-        charSheet.Load(@charSheetlocation);
-        string adress1 = string.Format("/csheets/{0}/hp/currenthp", charName);
-        //XmlNode charCurrentHp = charSheet.DocumentElement.SelectSingleNode(adress1);
-
-        charSheet.SelectSingleNode(adress1).InnerText = newHpValueString;
-
-        //Change value in XML-sheet
-        //charCurrentHp.Value = newHpValueString;
-        charSheet.Save(@charSheetlocation);
-
-        succes = true;
-        return succes;
-
     }
-
-    static int?[] charHp(string charName)
+    static void complexHP(string[] command,object sender, Discord.MessageEventArgs e)
     {
-        int?[] charHp = new int?[2];
-        //Laden van de XML-sheets
-        XmlDocument charSheet = new XmlDocument();
-
-        charSheet.Load(@charSheetlocation);
-
-        //Verkrijgen van info uit de XML
-        string adress1 = String.Format(" / csheets/{0}/hp/currenthp", charName);
-        string adress2 = String.Format("/csheets/{0}/hp/maxhp", charName);
-        XmlNode charCurrentHp = charSheet.DocumentElement.SelectSingleNode(adress1);
-        XmlNode charMaxHp = charSheet.DocumentElement.SelectSingleNode(adress2);
-        try
-        {
-            charHp[0] = Int32.Parse(charCurrentHp.InnerText);
-        }
-        catch
-        {
-            charHp[0] = null;
-            Console.WriteLine("charHp has been terminated, Parse error. {0} {1} ", charName, charHp);
-            return charHp;
-        }
+        string playerName = command[1];
+        string hpScore = command[2];
+        int hpModifier;
 
         try
         {
-            charHp[1] = Int32.Parse(charMaxHp.InnerText);
+            hpModifier = Int32.Parse(hpScore);
         }
         catch
         {
-            charHp[1] = null;
-            Console.WriteLine("charHp has been terminated, Parse error. {0} {1} ", charName, charHp);
-            return charHp;
+            errorMessage(2, sender, e);
+            return;
         }
 
-        Console.WriteLine("charHp initialized for {0}, value of: {1}/{2}", charName, charHp[0], charHp[1]);
+        editCharHp(playerName, hpModifier, sender, e);
+    }
+    static void editCharHp(string charName, int hpModifier, object sender, Discord.MessageEventArgs e)
+    {
+        //get current and max HP
+        int? cHp = charHp(charName);
+        int? cMaxHp = charMaxHp(charName);
+        int cNewHp;
+        string stringcNewHp;
+
+        if (cHp == null)
+        {
+            errorMessage(3, sender, e);
+            return;
+        }
+        //change HP, convert to string
+        if (cHp + hpModifier > cMaxHp)
+        {
+            cNewHp = cMaxHp ?? default(int);
+        }
+        else
+        {
+            cNewHp = hpModifier + cHp ?? default(int);
+        }
+
+        stringcNewHp = cNewHp.ToString();
+
+        string adress = string.Format("/csheets/{0}/hp/currenthp", charName);
+        xmlSet(stringcNewHp, adress);
+
+        string message = string.Format("De hp van {0} is nu {1}. *({2})*", charName, cNewHp, hpModifier);
+        channelMessage(message, sender, e);
+    }
+    static int? charHp(string charName)
+    {
+        int? charHp;
+        string adress = String.Format(" / csheets/{0}/hp/currenthp", charName);
+        string charCurrentHp = xmlGet(adress);
+        try
+        {
+            charHp = Int32.Parse(charCurrentHp);
+        }
+        catch
+        {
+            charHp = null;
+        }
 
         return charHp;
-
     }
-
-    static int? charAbilities(string charName, string charValueName) //Collects ability score from xml
+    static int? charMaxHp(string charName)
     {
-        //Laden van de XML-sheets
-        XmlDocument charSheet = new XmlDocument();
-
-        charSheet.Load(@charSheetlocation);
-
-        //Verkrijgen van info uit de XML
-        string adress = String.Format("/csheets/{0}/abilities/{1}", charName, charValueName);
-
-        XmlNode charInfo = charSheet.DocumentElement.SelectSingleNode(adress);
-
-        //Try to return the value, otherwise return errorcode
-        int? charValue = null;
+        int? charHp;
+        string adress = String.Format("/csheets/{0}/hp/maxhp", charName);
+        string charMaxHp = xmlGet(adress);
         try
         {
-            charValue = Int32.Parse(charInfo.InnerText);
+            charHp = Int32.Parse(charMaxHp);
         }
         catch
         {
-            int? errorCode = null;
-            Console.WriteLine("charAbilities has been terminated, Parse error. {0} {1} ", charValueName, charValue);
-            return errorCode;
+            charHp = null;
         }
-
-        Console.WriteLine("charAbilities has been succesfully executed with a {0} score of {1}", charValueName, charValue);
-
-        //Return de value
-        return charValue;
+        return charHp;
     }
+
+    //Ability Calculations
+    static int? charAbil(string charName, string charValueName)
+    {
+        int? charAbil;
+        string adress = String.Format("/csheets/{0}/abilities/{1}", charName, charValueName);
+        string value = xmlGet(adress);
+        try
+        {
+            charAbil = Int32.Parse(value);
+        }
+        catch
+        {
+            charAbil = null;
+        }
+        return charAbil;
+    }
+
 
     static int? charSkills(string charName, string charValueName) //collects skill score from xml
     {
