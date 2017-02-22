@@ -134,9 +134,7 @@ class Program
             e.Server.GetUser(toMention).SendMessage("YOU HAVE BEEN SUMMONED BY THE DM");
 
         }
-
         else pcCommand(sender, e);
-
     }
 
     /*
@@ -144,46 +142,46 @@ class Program
      */
     static void pcCommand(object sender, Discord.MessageEventArgs e)
     {
-        string[] command = commandPart(e.Message.RawText);
+        string[] command = commandPart(e.Message.RawText);          //the different command sections
+
+        //ability command
         if (e.Message.RawText.StartsWith("/ability"))
         {
-            int? abilScore = charAbil(e.User.Nickname, command[1]);
-            if (abilScore == null)
+            if (charAbil(e.User.Nickname, command[1]) == null)
             {
                 errorMessage(4, sender, e);
                 return;
             }
-            string message = string.Format("The {0} score of {1} = {2}", command[1], command[2], abilScore);
+            string message = string.Format("The {0} score of {1} = {2}", 
+                command[1], command[2], charAbil(e.User.Nickname, command[1]));
             personalMessage(message, sender, e);
             return;
         }
+        //HP command
         else if (e.Message.RawText.StartsWith("/hp"))
         {
             simpleHP(sender, e);
             return;
         }
-        else if (e.Message.RawText.StartsWith("/r"))                                    //Roll Dem Dice 2.0
+        //Roll Dem Dice 2.0
+        //warning dangerous code ahead
+        else if (e.Message.RawText.StartsWith("/r"))                                    
         {
-            Random rnd = new Random();
-            string[] calculator = new string[30];
-            string userName = e.User.Nickname;
-            string skillName = " ";
-            int skValue = 0;
-
-            string output = " ";
-            string diceOutput = " ";
-            int addValue = 0;
-
-            //let's split the calculator
-            int[] i = { 0, 0, 0, 0, 1, 1 }; //indexer
+            Random rnd = new Random();                      //random seed?
+            string[] calculator = new string[30];           //parts of the command, or something
+            string userName = e.User.Nickname;              //username
+            string skillName = " ";                         //name of the used skill
+            string output = " ";                            //output string
+            string diceOutput = " ";                        //dice output string
+            string comment;                                 //contains the optional comment
+            int skValue = 0;                                //value of the used skill
+            int addValue = 0;                               //summing value
+            int[] i = { 0, 0, 0, 0, 1, 1 };                 //indexers
 
             if (command[1].Contains("+") || command[1].Contains("-"))
             {
-                while (i[4] != 0) //lelijkste code ooit, maar het werkt
+                while (i[4] != 0)
                 {
-
-                    Console.WriteLine(i[5]);
-
                     i[1] = command[1].IndexOf("+", i[0]);
                     i[2] = command[1].IndexOf("-", i[0]);
 
@@ -192,7 +190,6 @@ class Program
                     if (i[0] == 0)
                     {
                         calculator[0] = command[1].Substring(0, i[1]);
-                        Console.WriteLine(calculator[0]);
                     }
 
                     i[3] = i[1] + 1;
@@ -207,18 +204,15 @@ class Program
                     if (i[0] != 0)
                     {
                         calculator[i[4]] = command[1].Substring(i[1], (i[0] - i[1]));
-                        Console.WriteLine(calculator[i[4]]);
                         i[4]++;
                     }
                     else
                     {
                         calculator[i[4]] = command[1].Substring(i[1], (command[1].Length - i[1]));
-                        Console.WriteLine(calculator[i[4]]);
                         i[4] = 0;
 
                     }
                     i[5]++;
-
                 }
             }
             else
@@ -231,20 +225,16 @@ class Program
 
             while (i[5] != ii)
             {
-                Console.WriteLine("checking commandpart -{0}-", calculator[ii]);
-
-                if (calculator[ii].Any(char.IsDigit) && calculator[ii].Contains("d")) //checks for dice
+                //check for dices
+                if (calculator[ii].Any(char.IsDigit) && calculator[ii].Contains("d"))
                 {
-                    Console.WriteLine("-{0}- is probably a dicer", calculator[ii]);
-                    diceOutput = diceOutput + calculator[ii];
+                    diceOutput += calculator[ii];
                     calculator[ii] = calculator[ii].TrimStart('+', '-');
                     //let's split the dicer
                     char dicerSplit = 'd';
                     int diceAmount = 0;
                     int diceValue = 0;
                     string[] dicer = calculator[ii].Split(dicerSplit);
-
-                    Console.WriteLine("dicer.length={0} dicer[0]={1} dicer[1]={2}", dicer.Length, dicer[0], dicer[1]);
 
                     if (dicer[0] == "")
                     {
@@ -260,7 +250,6 @@ class Program
                             return;
                         }
                     }
-
                     else
                     {
                         try
@@ -275,8 +264,6 @@ class Program
                             return;
                         }
                     }
-
-
                     while (diceAmount != 0)
                     {
                         int dice = rnd.Next(1, (diceValue + 1));
@@ -292,18 +279,16 @@ class Program
                             diceAmount = diceAmount - 1;
                         }
                     }
-
                 }
-
-                if (int.TryParse(calculator[ii], out number)) //checks for integer value
+                //checks for integer value
+                if (int.TryParse(calculator[ii], out number))
                 {
 
-                    addValue = addValue + number;
-                    output = output + calculator[ii];
-
+                    addValue += number;
+                    output += calculator[ii];
                 }
-
-                if (calculator[ii].Any(char.IsDigit) == false) //probably a skill check 'n add
+                //checks for skill
+                if (calculator[ii].Any(char.IsDigit) == false) 
                 {
                     calculator[ii] = calculator[ii].TrimStart('+', '-');
                     Console.WriteLine("skill after trim {0}", calculator[ii]);
@@ -317,14 +302,10 @@ class Program
                     }
                     skValue = skillValue ?? default(int);
                     addValue = addValue + skValue;
-
                 }
-
                 ii++;
             }
-
-            string comment;
-
+            //check for comment if it exists add it
             try
             {
                 comment = command[2];
@@ -333,16 +314,15 @@ class Program
             {
                 comment = "";
             }
-
+            //add skvalue to the output
             if (skValue != 0)
             {
-                output = output + string.Format("+{0}", skValue);
+                output += string.Format("+{0}", skValue);
             }
-
             //final changes to output
             output = string.Format("{0} = {1} = **{2}** `{3}` {4}", diceOutput, output, addValue, skillName, comment);
-
-            e.Message.Delete(); //deleting command-message
+            //deleting command-message
+            e.Message.Delete();
             e.Channel.SendMessage(e.User.Mention + output);
         }
     }
@@ -352,9 +332,7 @@ class Program
      */
     static string[] commandPart(string command)
     {
-        char[] delimiterchars = { ' ' };
-        string[] commandPart = command.Split(delimiterchars);
-        return commandPart;
+        return command.Split(' ');
     }
 
     /*
@@ -362,20 +340,18 @@ class Program
      */
     static string xmlGet(string adress)
     {
-        //laden XML-sheet
+        //load XML-sheet
         XmlDocument charSheet = new XmlDocument();
         charSheet.Load(@charSheetlocation);
-        string value;
-        //verkrijgen info
+        //obtain info
         try
         {
-            value = charSheet.DocumentElement.SelectSingleNode(adress).InnerText;
+            return charSheet.DocumentElement.SelectSingleNode(adress).InnerText;
         }
         catch
         {
-            value = "none";
+            return "none";
         }
-        return value;
     }
 
     /*
@@ -403,7 +379,6 @@ class Program
      */
     static void personalMessage(string message, object sender, Discord.MessageEventArgs e)
     {
-
         e.Message.Delete();
         e.User.SendMessage(message);
     }
@@ -422,16 +397,14 @@ class Program
      */
     static void simpleHP(object sender, Discord.MessageEventArgs e)
     {
-        int? cHp = charHp(e.User.Nickname);
-        int? cMaxHp = charMaxHp(e.User.Nickname);
-        if (cHp == null)
+        if (charHp(e.User.Nickname) == null)
         {
             errorMessage(1, sender, e);
         }
         else
         {
-            string message = string.Format("Your current hp is {0}/{1}", cHp, cMaxHp);
-            personalMessage(message, sender, e);
+            personalMessage(string.Format("Your current hp is {0}/{1}",
+                charHp(e.User.Nickname), charMaxHp(e.User.Nickname)), sender, e);
         }
     }
 
@@ -440,21 +413,14 @@ class Program
      */
     static void complexHP(string[] command,object sender, Discord.MessageEventArgs e)
     {
-        string playerName = command[1];
-        string hpScore = command[2];
-        int hpModifier;
-
         try
         {
-            hpModifier = Int32.Parse(hpScore);
+            editCharHp(command[1], Int32.Parse(command[2]), sender, e);
         }
         catch
         {
             errorMessage(2, sender, e);
-            return;
         }
-
-        editCharHp(playerName, hpModifier, sender, e);
     }
 
     /*
@@ -463,32 +429,25 @@ class Program
      */
     static void editCharHp(string charName, int hpModifier, object sender, Discord.MessageEventArgs e)
     {
-        //get current and max HP
-        int? cHp = charHp(charName);
-        int? cMaxHp = charMaxHp(charName);
-        int cNewHp;
-        string stringcNewHp;
+        int cNewHp;                     //new HP
 
-        if (cHp == null)
+        //error check
+        if (charHp(charName) == null)
         {
             errorMessage(3, sender, e);
             return;
         }
         //change HP, convert to string
-        if (cHp + hpModifier > cMaxHp)
+        if (charHp(charName) + hpModifier > charMaxHp(charName))
         {
-            cNewHp = cMaxHp ?? default(int);
+            cNewHp = charMaxHp(charName) ?? default(int);
         }
         else
         {
-            cNewHp = hpModifier + cHp ?? default(int);
+            cNewHp = hpModifier + charHp(charName) ?? default(int);
         }
-
-        stringcNewHp = cNewHp.ToString();
-
         string adress = string.Format("/csheets/{0}/hp/currenthp", charName);
-        xmlSet(stringcNewHp, adress);
-
+        xmlSet(cNewHp.ToString(), adress);
         string message = string.Format("De hp van {0} is nu {1}. *({2})*", charName, cNewHp, hpModifier);
         channelMessage(message, sender, e);
     }
@@ -498,19 +457,14 @@ class Program
      */
     static int? charHp(string charName)
     {
-        int? charHp;
-        string adress = String.Format(" / csheets/{0}/hp/currenthp", charName);
-        string charCurrentHp = xmlGet(adress);
         try
         {
-            charHp = Int32.Parse(charCurrentHp);
+            return Int32.Parse(xmlGet(String.Format(" / csheets/{0}/hp/currenthp", charName)));
         }
         catch
         {
-            charHp = null;
+            return null;
         }
-
-        return charHp;
     }
 
     /*
@@ -518,18 +472,14 @@ class Program
      */
     static int? charMaxHp(string charName)
     {
-        int? charHp;
-        string adress = String.Format("/csheets/{0}/hp/maxhp", charName);
-        string charMaxHp = xmlGet(adress);
         try
         {
-            charHp = Int32.Parse(charMaxHp);
+            return Int32.Parse(xmlGet(String.Format("/csheets/{0}/hp/maxhp", charName)));
         }
         catch
         {
-            charHp = null;
+            return null;
         }
-        return charHp;
     }
 
     /*
@@ -537,18 +487,14 @@ class Program
      */
     static int? charAbil(string charName, string charValueName)
     {
-        int? charAbil;
-        string adress = String.Format("/csheets/{0}/abilities/{1}", charName, charValueName);
-        string value = xmlGet(adress);
         try
         {
-            charAbil = Int32.Parse(value);
+            return Int32.Parse(xmlGet(String.Format("/csheets/{0}/abilities/{1}", charName, charValueName)));
         }
         catch
         {
-            charAbil = null;
+            return null;
         }
-        return charAbil;
     }
 
     /*
@@ -558,31 +504,24 @@ class Program
     {
         //Laden van de XML-sheets
         XmlDocument charSheet = new XmlDocument();
-
         charSheet.Load(@charSheetlocation);
 
         //Verkrijgen van info uit de XML
-        string adress = String.Format("/csheets/{0}/skills/{1}", charName, charValueName);
-
-        XmlNode charInfo = charSheet.DocumentElement.SelectSingleNode(adress);
+        XmlNode charInfo = charSheet.DocumentElement.SelectSingleNode(String.Format("/csheets/{0}/skills/{1}", charName, charValueName));
 
         //Try to return the value, otherwise return errorcode
         int? charValue = null;
         try
         {
-            charValue = Int32.Parse(charInfo.InnerText);
+            Console.WriteLine("charSkills has been succesfully executed with a {0} score of {1}", charValueName, charValue);
+            return Int32.Parse(charInfo.InnerText);
         }
         catch
         {
-            int? errorCode = null;
-            Console.WriteLine("charAbilities has been terminated, Parse error. {0} {1} {2} {3}", charValueName, charValue, charName, adress);
-            return errorCode;
+            Console.WriteLine("charAbilities has been terminated, Parse error. {0} {1} {2} {3}", 
+                charValueName, Int32.Parse(charInfo.InnerText), charName, String.Format("/csheets/{0}/skills/{1}", charName, charValueName));
+            return null;
         }
-
-        Console.WriteLine("charSkills has been succesfully executed with a {0} score of {1}", charValueName, charValue);
-
-        //Return the value
-        return charValue;
     }
 
     /*
@@ -621,9 +560,7 @@ class Program
                 }
             }
         }
-
-        string fullname = abilitiesNames[i];
-        return fullname;
+        return abilitiesNames[i];
     }
 
     /*
