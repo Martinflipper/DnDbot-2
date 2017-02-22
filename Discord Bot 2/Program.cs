@@ -31,10 +31,6 @@ class Program
      */
     private DiscordClient _client;
     static string charSheetlocation = string.Format("{0}CharSheet.xml", Path.GetTempPath());
-
-    /*
-     * Starts the program
-     */
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
