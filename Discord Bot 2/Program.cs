@@ -401,52 +401,7 @@ class Program
         }
         return abilitiesNames[i];
     }
-
-    /*
-     * returns int array {value to be added, typecode}
-     * Checks command parts to determine function
-     */
-    static int[] typeChecker(string commandPart, string userName)
-    {
-        int functionValue;
-        int[] typeChecker = new int[2];
-
-        if (int.TryParse(commandPart, out functionValue)) //checks for integer value
-        {
-            typeChecker[0] = functionValue;
-
-            Console.WriteLine("Typechecker exec:{0}{1}", typeChecker[0], typeChecker[1]);
-
-            return typeChecker;
-        }
-        else if (commandPart.StartsWith("#")) //checks for comment
-        {
-            typeChecker[1] = 1;
-
-            Console.WriteLine("Typechecker exec:{0}{1}", typeChecker[0], typeChecker[1]);
-
-            return typeChecker;
-        }
-        else //checks for ability check
-        {
-            string fullName = nameHandler(commandPart);
-            if (fullName == "false")
-            {
-                typeChecker[1] = 2;
-                return typeChecker;
-            }
-
-            int? abilScore = charSkills(userName, fullName);
-
-            typeChecker[0] = abilScore ?? default(int);
-            typeChecker[1] = 3;
-
-            Console.WriteLine("Typechecker exec:{0}{1}", typeChecker[0], typeChecker[1]);
-
-            return typeChecker;
-        }
-    }
-
+     
     /*
      * returns the smalles nog negative of two numbers
      */
@@ -462,7 +417,9 @@ class Program
             return 0;
     }
 
-    //Dicer
+    /*
+     * following are the functions needed for the diceroller 
+     */
     static string[] splitdicer(string unsplitdicer)
     {
         string[] split = new string[20];
