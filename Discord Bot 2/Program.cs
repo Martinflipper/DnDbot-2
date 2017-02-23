@@ -34,8 +34,11 @@ class Program
     static string diceoutput = " ";         //output of dice displayed in message
     static string sumoutput = "";           //output of sum displayed in message
     static int valueoutput;                 //actual calculated value
-    static string skillname = " ";                //name of skill used in throw
-
+    static string skillname = " ";          //name of skill used in throw
+    
+    /*
+     * starts the program
+     */
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
@@ -278,25 +281,16 @@ class Program
      */
     static void editCharHp(string charName, int hpModifier, object sender, Discord.MessageEventArgs e)
     {
-        int cNewHp;                     //new HP
-
         //error check
         if (charHp(charName) == null)
         {
             errorMessage(3, sender, e);
             return;
         }
-        //change HP, convert to string
-        if (charHp(charName) + hpModifier > charMaxHp(charName))
-        {
-            cNewHp = charMaxHp(charName) ?? default(int);
-        }
-        else
-        {
-            cNewHp = hpModifier + charHp(charName) ?? default(int);
-        }
-        string adress = string.Format("/csheets/{0}/hp/currenthp", charName);
-        xmlSet(cNewHp.ToString(), adress);
+  
+        int cNewHp = Math.Min(hpModifier + charHp(charName) ?? default(int), charMaxHp(charName) ?? default(int));
+
+        xmlSet(cNewHp.ToString(), string.Format("/csheets/{0}/hp/currenthp", charName));
         string message = string.Format("De hp van {0} is nu {1}. *({2})*", charName, cNewHp, hpModifier);
         channelMessage(message, sender, e);
     }
@@ -351,8 +345,7 @@ class Program
      */
     static int? charSkills(string charName, string charValueName)
     {
-        string adress = String.Format("/csheets/{0}/skills/{1}", charName, charValueName);
-        string value = xmlGet(adress);
+        string value = xmlGet(String.Format("/csheets/{0}/skills/{1}", charName, charValueName));
         try
         {
             return Int32.Parse(value);
@@ -417,30 +410,38 @@ class Program
             return 0;
     }
 
-    /*
+    /**
      * following are the functions needed for the diceroller 
      */
+     /*
+      * original horror function
+      * splits the dicer
+      */
     static string[] splitdicer(string unsplitdicer)
     {
-        string[] split = new string[20];
-        int i = 0;
+        string[] split = new string[20];                //parts of the original string
+        int i = 0;                                      //idex
         while(unsplitdicer.IndexOf('+',1)!=-1 || unsplitdicer.IndexOf('-',1) != -1)
         {
-            split[i] = unsplitdicer.Remove(getSmallestNonNegative(unsplitdicer.IndexOf('+', 1), unsplitdicer.IndexOf('-', 1))); ;       //stringpart till first + or -
-            unsplitdicer = unsplitdicer.Remove(0, getSmallestNonNegative(unsplitdicer.IndexOf('+',1), unsplitdicer.IndexOf('-',1)));    //stringpart from first + or -
+            //stringpart till first + or -
+            split[i] = unsplitdicer.Remove(getSmallestNonNegative(unsplitdicer.IndexOf('+', 1), unsplitdicer.IndexOf('-', 1))); ;
+            //stringpart from first + or -       
+            unsplitdicer = unsplitdicer.Remove(0, getSmallestNonNegative(unsplitdicer.IndexOf('+',1), unsplitdicer.IndexOf('-',1)));    
             i++;          
         }
         split[i] = unsplitdicer; //adding last part
         Array.Resize(ref split, i+1); //resize array from 20 to appropiate length
         return split;
-        
     }
+
+    /*
+     * Handles all sums
+     */
     static void sumhandler(string[] split, object sender, Discord.MessageEventArgs e)
     {
         int number;         //only for TryParse
-
-        int i = 0; //indexer
-        while (split.Length != i)
+        
+        for(int i=0; i<=split.Length; i++)
         {
             //check for dice
             if (split[i].Any(char.IsDigit) && split[i].Contains("d"))
@@ -454,14 +455,17 @@ class Program
                 sumoutput += split[i];
             }
             //checks for skill
-            if (split[i].Any(char.IsDigit) == false)
+            if (!split[i].Any(char.IsDigit))
             {
                 skillhandler(split[i], sender, e);
             }
-            i++;
         }
 
     }
+
+    /*
+     * handles all dicerolls
+     */
     static void dicehandler(string dice, object sender, Discord.MessageEventArgs e)
     {
         diceoutput += dice;
@@ -494,6 +498,10 @@ class Program
         }
 
     }
+
+    /*
+     * Handles all skills
+     */
     static void skillhandler(string skill,object sender,Discord.MessageEventArgs e)
     {
         skill = skill.TrimStart('+', '-');
@@ -507,6 +515,10 @@ class Program
         valueoutput += skillValue ?? default(int);
         sumoutput += string.Format("+*{0}*", skillValue);
     }
+
+    /*
+     * Handles all comments
+     */
     static string commenthandler(string[] command)
     {
         string comment = "";
@@ -525,35 +537,38 @@ class Program
         }
         return comment;
     }
+
+    /*
+     * generates the random numbers for the dicerolls
+     */
     static void roller(int diceamount, int dicevalue)
     {
-        Random rnd = new Random();                      //random seed?
+        //seed is no problem unless called to often in a short period of time
+        //the seed is automatically generated using the system clock
+        //-> pseudo-random with a slightly elevated change of higher numbers
+        Random rnd = new Random();
         int addValue = 0;
 
-        while (diceamount != 0)
+        for(int i = 0; i < diceamount; i++)
         {
             int dice = rnd.Next(1, (dicevalue + 1));
             addValue += dice;
             if (sumoutput == "")
             {
                 sumoutput = string.Format("({0})", dice);
-                diceamount--;
             }
             else
             {
                 sumoutput += string.Format("+({0})", dice);
-                diceamount--;
             }
         }
-
         valueoutput += addValue;
     }
     static void dicereset()
     {
         diceoutput = " ";         //output of dice displayed in message
         sumoutput = "";           //output of sum displayed in message
-        valueoutput = 0;                 //actual calculated value
-        skillname = " ";                //name of skill used in throw
+        valueoutput = 0;          //actual calculated value
+        skillname = " ";          //name of skill used in throw
     }
-
 }
