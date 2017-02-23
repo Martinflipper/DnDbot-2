@@ -176,65 +176,21 @@ class Program
             string comment;                                 //contains the optional comment
             int skValue = 0;                                //value of the used skill
             int addValue = 0;                               //summing value
-            int[] i = { 0, 0, 0, 0, 1, 1 };                 //indexers
-
-            if (command[1].Contains("+") || command[1].Contains("-"))
-            {
-                while (i[4] != 0)
-                {
-                    i[1] = command[1].IndexOf("+", i[0]);
-                    i[2] = command[1].IndexOf("-", i[0]);
-
-                    i[1] = getSmallestNonNegative(i[1], i[2]);
-
-                    if (i[0] == 0)
-                    {
-                        calculator[0] = command[1].Substring(0, i[1]);
-                    }
-
-                    i[3] = i[1] + 1;
-
-                    i[0] = command[1].IndexOf("+", i[3]);
-                    i[2] = command[1].IndexOf("-", i[3]);
-
-                    i[0] = getSmallestNonNegative(i[0], i[2]);
-
-                    i[3] = i[0] + 1;
-
-                    if (i[0] != 0)
-                    {
-                        calculator[i[4]] = command[1].Substring(i[1], (i[0] - i[1]));
-                        i[4]++;
-                    }
-                    else
-                    {
-                        calculator[i[4]] = command[1].Substring(i[1], (command[1].Length - i[1]));
-                        i[4] = 0;
-
-                    }
-                    i[5]++;
-                }
-            }
-            else
-            {
-                calculator[0] = command[1];
-            }
-
-            int ii = 0; //indexer2
             int number = 0;
-
-            while (i[5] != ii)
+            string[] split = splitdicer(command[1]);        //array of dicer, split in parts
+                       
+            int i = 0; //indexer
+            while (split.Length != i)
             {
                 //check for dices
-                if (calculator[ii].Any(char.IsDigit) && calculator[ii].Contains("d"))
+                if (split[i].Any(char.IsDigit) && split[i].Contains("d"))
                 {
-                    diceOutput += calculator[ii];
-                    calculator[ii] = calculator[ii].TrimStart('+', '-');
+                    diceOutput += split[i];
+                    split[i] = split[i].TrimStart('+', '-');
                     //let's split the dicer
-                    char dicerSplit = 'd';
                     int diceAmount = 0;
                     int diceValue = 0;
-                    string[] dicer = calculator[ii].Split(dicerSplit);
+                    string[] dicer = split[i].Split('d');
 
                     if (dicer[0] == "")
                     {
@@ -281,18 +237,16 @@ class Program
                     }
                 }
                 //checks for integer value
-                if (int.TryParse(calculator[ii], out number))
+                if (int.TryParse(split[i], out number))
                 {
-
                     addValue += number;
-                    output += calculator[ii];
+                    output += split[i];
                 }
                 //checks for skill
-                if (calculator[ii].Any(char.IsDigit) == false) 
+                if (split[i].Any(char.IsDigit) == false) 
                 {
-                    calculator[ii] = calculator[ii].TrimStart('+', '-');
-                    Console.WriteLine("skill after trim {0}", calculator[ii]);
-                    skillName = nameHandler(calculator[ii]);
+                    split[i] = split[i].TrimStart('+', '-');
+                    skillName = nameHandler(split[i]);
                     int? skillValue = charSkills(userName, skillName);
                     if (skillValue == null)
                     {
@@ -303,9 +257,9 @@ class Program
                     skValue = skillValue ?? default(int);
                     addValue = addValue + skValue;
                 }
-                ii++;
+                i++;
             }
-            //check for comment if it exists add it
+            //check for comment if it exists add it *must be updated to accomodate spaces*
             try
             {
                 comment = command[2];
@@ -621,5 +575,27 @@ class Program
             return b;
         else
             return 0;
+    }
+
+    //Dicer
+    static string[] splitdicer(string unsplitdicer)
+    {
+        string[] split = new string[20];
+        int i = 0;
+        while(unsplitdicer.IndexOf('+',1)!=-1 || unsplitdicer.IndexOf('-',1) != -1)
+        {
+            split[i] = unsplitdicer.Remove(getSmallestNonNegative(unsplitdicer.IndexOf('+', 1), unsplitdicer.IndexOf('-', 1))); ;       //stringpart till first + or -
+            unsplitdicer = unsplitdicer.Remove(0, getSmallestNonNegative(unsplitdicer.IndexOf('+',1), unsplitdicer.IndexOf('-',1)));    //stringpart from first + or -
+            i++;          
+        }
+        split[i] = unsplitdicer; //adding last part
+        Array.Resize(ref split, i+1); //resize array from 20 to appropiate length
+        return split;
+        
+    }
+    static string splitter(string unsplit)
+    {
+        return unsplit.Remove(getSmallestNonNegative(unsplit.IndexOf('+',1), unsplit.IndexOf('-',1)));
+        
     }
 }
