@@ -31,11 +31,16 @@ class Program
      */
     private DiscordClient _client;
     static string charSheetlocation = string.Format("{0}CharSheet.xml", Path.GetTempPath());
+
+    //variables for diceroller
     static string diceoutput = " ";         //output of dice displayed in message
     static string sumoutput = "";           //output of sum displayed in message
     static int valueoutput;                 //actual calculated value
     static string skillname = " ";                //name of skill used in throw
 
+    /*
+     * Code starts here
+     */
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
@@ -64,7 +69,7 @@ class Program
     }
 
     /*
-     * message received from a bot
+     * message received from a bot, command handling
      */
     static void bot_MessageReceived(object sender, Discord.MessageEventArgs e)
     {
@@ -87,10 +92,11 @@ class Program
             pcCommand(sender, e);
         }
     }
+    static string[] commandPart(string command)
+    {
+        return command.Split(' ');
+    }
 
-    /*
-     * command from dm
-     */
     static void dmCommand(object sender, Discord.MessageEventArgs e)
     {
         string[] command = commandPart(e.Message.RawText);
@@ -141,10 +147,6 @@ class Program
         }
         else pcCommand(sender, e);
     }
-
-    /*
-     * command from pc
-     */
     static void pcCommand(object sender, Discord.MessageEventArgs e)
     {
         string[] command = commandPart(e.Message.RawText);          //the different command sections
@@ -177,15 +179,7 @@ class Program
     }
 
     /*
-     * split the command into command sections
-     */
-    static string[] commandPart(string command)
-    {
-        return command.Split(' ');
-    }
-
-    /*
-     * XML-handler: Get
+     * XML-handlers
      */
     static string xmlGet(string adress)
     {
@@ -202,10 +196,6 @@ class Program
             return "none";
         }
     }
-
-    /*
-     * XML-handler: Set
-     */
     static void xmlSet(string value, string adress)
     {
         XmlDocument charSheet = new XmlDocument();
@@ -215,26 +205,18 @@ class Program
     }
 
     /*
-     * sends an error message
+     * Message-handlers
      */
     static void errorMessage(int errorCode, object sender, Discord.MessageEventArgs e)
     {
         string message = string.Format("Command Failure, error code {0}", errorCode);
         e.User.SendMessage(message);
     }
-
-    /*
-     * sends a personal message
-     */
     static void personalMessage(string message, object sender, Discord.MessageEventArgs e)
     {
         e.Message.Delete();
         e.User.SendMessage(message);
     }
-
-    /*
-     * sends a channel message
-     */
     static void channelMessage(string message, object sender, Discord.MessageEventArgs e)
     {
         e.Message.Delete();
@@ -242,7 +224,7 @@ class Program
     }
 
     /*
-     * sets the HP value
+     * HP getters, setters
      */
     static void simpleHP(object sender, Discord.MessageEventArgs e)
     {
@@ -256,10 +238,6 @@ class Program
                 charHp(e.User.Nickname), charMaxHp(e.User.Nickname)), sender, e);
         }
     }
-
-    /*
-     * changes the HP value (DM only)
-     */
     static void complexHP(string[] command,object sender, Discord.MessageEventArgs e)
     {
         try
@@ -272,10 +250,6 @@ class Program
         }
     }
 
-    /*
-     * called by compPlexHP and DM command handler
-     * does checks sets new HP and edits everything in XML
-     */
     static void editCharHp(string charName, int hpModifier, object sender, Discord.MessageEventArgs e)
     {
         int cNewHp;                     //new HP
@@ -300,10 +274,6 @@ class Program
         string message = string.Format("De hp van {0} is nu {1}. *({2})*", charName, cNewHp, hpModifier);
         channelMessage(message, sender, e);
     }
-
-    /*
-     * Displays charHp
-     */
     static int? charHp(string charName)
     {
         try
@@ -315,10 +285,6 @@ class Program
             return null;
         }
     }
-
-    /*
-     * Displays charMax Hp
-     */
     static int? charMaxHp(string charName)
     {
         try
@@ -332,7 +298,7 @@ class Program
     }
 
     /*
-     * return ability value
+     * return different charsheet values
      */
     static int? charAbil(string charName, string charValueName)
     {
@@ -345,10 +311,6 @@ class Program
             return null;
         }
     }
-
-    /*
-     * collects skill score from xml
-     */
     static int? charSkills(string charName, string charValueName)
     {
         string adress = String.Format("/csheets/{0}/skills/{1}", charName, charValueName);
@@ -403,7 +365,7 @@ class Program
     }
      
     /*
-     * returns the smalles nog negative of two numbers
+     * returns the smalles non negative of two numbers
      */
     static int getSmallestNonNegative(int a, int b)
     {
@@ -418,7 +380,7 @@ class Program
     }
 
     /*
-     * following are the functions needed for the diceroller 
+     * Diceroller functions
      */
     static string[] splitdicer(string unsplitdicer)
     {
@@ -435,6 +397,7 @@ class Program
         return split;
         
     }
+
     static void sumhandler(string[] split, object sender, Discord.MessageEventArgs e)
     {
         int number;         //only for TryParse
@@ -525,6 +488,7 @@ class Program
         }
         return comment;
     }
+
     static void roller(int diceamount, int dicevalue)
     {
         Random rnd = new Random();                      //random seed?
@@ -548,6 +512,7 @@ class Program
 
         valueoutput += addValue;
     }
+
     static void dicereset()
     {
         diceoutput = " ";         //output of dice displayed in message
