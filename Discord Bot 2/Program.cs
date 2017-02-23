@@ -31,6 +31,11 @@ class Program
      */
     private DiscordClient _client;
     static string charSheetlocation = string.Format("{0}CharSheet.xml", Path.GetTempPath());
+    static string diceoutput = " ";         //output of dice displayed in message
+    static string sumoutput = "";           //output of sum displayed in message
+    static int valueoutput;                 //actual calculated value
+    static string skillname = " ";                //name of skill used in throw
+
     public void Start()
     {
         XmlDocument charSheet = new XmlDocument();
@@ -143,7 +148,6 @@ class Program
     static void pcCommand(object sender, Discord.MessageEventArgs e)
     {
         string[] command = commandPart(e.Message.RawText);          //the different command sections
-
         //ability command
         if (e.Message.RawText.StartsWith("/ability"))
         {
@@ -163,121 +167,12 @@ class Program
             simpleHP(sender, e);
             return;
         }
-        //Roll Dem Dice 2.0
-        //warning dangerous code ahead
+        //Roll Dem Dice 3.0
         else if (e.Message.RawText.StartsWith("/r"))                                    
         {
-            Random rnd = new Random();                      //random seed?
-            string[] calculator = new string[30];           //parts of the command, or something
-            string userName = e.User.Nickname;              //username
-            string skillName = " ";                         //name of the used skill
-            string output = " ";                            //output string
-            string diceOutput = " ";                        //dice output string
-            string comment;                                 //contains the optional comment
-            int skValue = 0;                                //value of the used skill
-            int addValue = 0;                               //summing value
-            int number = 0;
-            string[] split = splitdicer(command[1]);        //array of dicer, split in parts
-                       
-            int i = 0; //indexer
-            while (split.Length != i)
-            {
-                //check for dices
-                if (split[i].Any(char.IsDigit) && split[i].Contains("d"))
-                {
-                    diceOutput += split[i];
-                    split[i] = split[i].TrimStart('+', '-');
-                    //let's split the dicer
-                    int diceAmount = 0;
-                    int diceValue = 0;
-                    string[] dicer = split[i].Split('d');
-
-                    if (dicer[0] == "")
-                    {
-                        try
-                        {
-                            diceAmount = 1;
-                            diceValue = Int32.Parse(dicer[1]);
-                        }
-                        catch
-                        {
-                            string errorMessage = "U FUCKED UP, parse error";
-                            e.User.SendMessage(errorMessage);
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            diceAmount = Int32.Parse(dicer[0]);
-                            diceValue = Int32.Parse(dicer[1]);
-                        }
-                        catch
-                        {
-                            string errorMessage = "U FUCKED UP, parse error";
-                            e.User.SendMessage(errorMessage);
-                            return;
-                        }
-                    }
-                    while (diceAmount != 0)
-                    {
-                        int dice = rnd.Next(1, (diceValue + 1));
-                        addValue = addValue + dice;
-                        if (output == " ")
-                        {
-                            output = string.Format("({0})", dice);
-                            diceAmount = diceAmount - 1;
-                        }
-                        else
-                        {
-                            output = output + string.Format("+({0})", dice);
-                            diceAmount = diceAmount - 1;
-                        }
-                    }
-                }
-                //checks for integer value
-                if (int.TryParse(split[i], out number))
-                {
-                    addValue += number;
-                    output += split[i];
-                }
-                //checks for skill
-                if (split[i].Any(char.IsDigit) == false) 
-                {
-                    split[i] = split[i].TrimStart('+', '-');
-                    skillName = nameHandler(split[i]);
-                    int? skillValue = charSkills(userName, skillName);
-                    if (skillValue == null)
-                    {
-                        string errorMessage = "U FUCKED UP, command error";
-                        e.User.SendMessage(e.User.Mention + errorMessage);
-                        return;
-                    }
-                    skValue = skillValue ?? default(int);
-                    addValue = addValue + skValue;
-                }
-                i++;
-            }
-            //check for comment if it exists add it *must be updated to accomodate spaces*
-            try
-            {
-                comment = command[2];
-            }
-            catch
-            {
-                comment = "";
-            }
-            //add skvalue to the output
-            if (skValue != 0)
-            {
-                output += string.Format("+{0}", skValue);
-            }
-            //final changes to output
-            output = string.Format("{0} = {1} = **{2}** `{3}` {4}", diceOutput, output, addValue, skillName, comment);
-            //deleting command-message
-            e.Message.Delete();
-            e.Channel.SendMessage(e.User.Mention + output);
+            dicereset();
+            sumhandler(splitdicer(command[1]), sender, e);
+            channelMessage(string.Format("{0} = {1} = **{2}** `{3}` {4}", diceoutput, sumoutput, valueoutput, skillname, commenthandler(command)), sender, e);
         }
     }
 
@@ -343,7 +238,7 @@ class Program
     static void channelMessage(string message, object sender, Discord.MessageEventArgs e)
     {
         e.Message.Delete();
-        e.Channel.SendMessage(message);
+        e.Channel.SendMessage(e.User.Mention + message);
     }
 
     /*
@@ -456,24 +351,14 @@ class Program
      */
     static int? charSkills(string charName, string charValueName)
     {
-        //Laden van de XML-sheets
-        XmlDocument charSheet = new XmlDocument();
-        charSheet.Load(@charSheetlocation);
-
-        //Verkrijgen van info uit de XML
-        XmlNode charInfo = charSheet.DocumentElement.SelectSingleNode(String.Format("/csheets/{0}/skills/{1}", charName, charValueName));
-
-        //Try to return the value, otherwise return errorcode
-        int? charValue = null;
+        string adress = String.Format("/csheets/{0}/skills/{1}", charName, charValueName);
+        string value = xmlGet(adress);
         try
         {
-            Console.WriteLine("charSkills has been succesfully executed with a {0} score of {1}", charValueName, charValue);
-            return Int32.Parse(charInfo.InnerText);
+            return Int32.Parse(value);
         }
         catch
         {
-            Console.WriteLine("charAbilities has been terminated, Parse error. {0} {1} {2} {3}", 
-                charValueName, Int32.Parse(charInfo.InnerText), charName, String.Format("/csheets/{0}/skills/{1}", charName, charValueName));
             return null;
         }
     }
@@ -593,9 +478,125 @@ class Program
         return split;
         
     }
-    static string splitter(string unsplit)
+    static void sumhandler(string[] split, object sender, Discord.MessageEventArgs e)
     {
-        return unsplit.Remove(getSmallestNonNegative(unsplit.IndexOf('+',1), unsplit.IndexOf('-',1)));
-        
+        int number;         //only for TryParse
+
+        int i = 0; //indexer
+        while (split.Length != i)
+        {
+            //check for dice
+            if (split[i].Any(char.IsDigit) && split[i].Contains("d"))
+            {
+                dicehandler(split[i], sender, e);
+            }
+            //checks for integer value
+            if (int.TryParse(split[i], out number))
+            {
+                valueoutput += number;
+                sumoutput += split[i];
+            }
+            //checks for skill
+            if (split[i].Any(char.IsDigit) == false)
+            {
+                skillhandler(split[i], sender, e);
+            }
+            i++;
+        }
+
     }
+    static void dicehandler(string dice, object sender, Discord.MessageEventArgs e)
+    {
+        diceoutput += dice;
+        dice = dice.TrimStart('+', '-');        
+        int diceAmount = 0;                     //amount of dice (part before d)
+        int diceValue = 0;                      //value of dice (part after d)
+        string[] dicer = dice.Split('d');       //string[] containing above parts
+        if (dicer[0] == "")
+        {
+            dicer[0] = "1";
+        }
+        try
+        {
+            diceAmount = Int32.Parse(dicer[0]);
+            diceValue = Int32.Parse(dicer[1]);
+        }
+        catch
+        {
+            errorMessage(5, sender, e);
+            return;
+        }
+
+        if (diceAmount <= 101 && diceValue <= 1001) 
+        {
+            roller(diceAmount, diceValue);
+        }
+        else
+        {
+            errorMessage(6, sender, e);
+        }
+
+    }
+    static void skillhandler(string skill,object sender,Discord.MessageEventArgs e)
+    {
+        skill = skill.TrimStart('+', '-');
+        skillname += nameHandler(skill);
+        int? skillValue = charSkills(e.Message.User.Nickname, skillname);
+        if (skillValue == null)
+        {
+            errorMessage(6, sender, e);
+            return;
+        }
+        valueoutput += skillValue ?? default(int);
+        sumoutput += string.Format("+*{0}*", skillValue);
+    }
+    static string commenthandler(string[] command)
+    {
+        string comment = "";
+        int i = 2;
+        while (true)
+        {
+            try
+            {
+                comment += string.Format("{0} ", command[i]);
+                i++;
+            }
+            catch
+            {
+                break;
+            }
+        }
+        return comment;
+    }
+    static void roller(int diceamount, int dicevalue)
+    {
+        Random rnd = new Random();                      //random seed?
+        int addValue = 0;
+
+        while (diceamount != 0)
+        {
+            int dice = rnd.Next(1, (dicevalue + 1));
+            addValue += dice;
+            if (sumoutput == "")
+            {
+                sumoutput = string.Format("({0})", dice);
+                diceamount--;
+            }
+            else
+            {
+                sumoutput += string.Format("+({0})", dice);
+                diceamount--;
+            }
+        }
+
+        valueoutput += addValue;
+    }
+    static void dicereset()
+    {
+        diceoutput = " ";         //output of dice displayed in message
+        sumoutput = "";           //output of sum displayed in message
+        valueoutput = 0;                 //actual calculated value
+        skillname = " ";                //name of skill used in throw
+    }
+
 }
